@@ -1,0 +1,9 @@
+
+public enum SystemCallTypes {
+	READ_DISK,
+	WRITE_DISK,
+	READ_MEMORY,
+	WRITE_MEMORY,
+	USER_INPUT,
+	USER_OUTPUT
+}
