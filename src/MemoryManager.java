@@ -18,7 +18,7 @@ import java.util.Hashtable;
  */
 //TODO not enough space for process
 public class MemoryManager {
-    String[] memory = new String[40];
+    public static String[] memory = new String[40];
     static final int KERNEL_END = 15;
     static final int USER_START = 16;
     static final int USER_END = 39;
@@ -60,20 +60,24 @@ public class MemoryManager {
     	for(int i=USER_START; i<USER_END-processSize + 1; i++) {
     		for(int j =0; j<processSize; j++) {
     			if(j == processSize-1) {
-    				//found empty space
-    				//insert instructions
-    				int c=i;
-    				for(String ins: process.instructions) {
-    					
-    					memory[c++]= new String("ins:"+ins);
+    				if(memory[i+j] != null || memory[i+j].equals(ProcessState.FINISHED.toString()))/*check if state finished*/{
+	    				//found empty space
+	    				//insert instructions
+	    				int c=i;
+	    				for(String ins: process.instructions) {
+	    					
+	    					memory[c++]= new String("ins:"+ins);
+	    				}
+	    				memory[c] = new String("var:");
+	    				memory[c+1] = new String("var:");
+	    				memory[c+2] = new String("var:");
+	    				return;
     				}
-    				memory[c] = new String("var:");
-    				memory[c+1] = new String("var:");
-    				memory[c+2] = new String("var:");
-
     			}
     		}
     	}
+    	//case2: check for finished process then check again for available space
+    	
     	
     	
     }

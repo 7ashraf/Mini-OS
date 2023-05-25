@@ -66,6 +66,48 @@ public class SystemCall {
 		return ret;
 		
 	}
+	public String ReadFromMem(int startBoundry,int endBoundry) {
+		String ret = "";
+		for(int i =startBoundry;i<endBoundry;i++) {
+			ret += MemoryManager.memory[i];
+		}
+		
+		return ret;
+	}
+	
+	public String getBoundries(String pid) {
+		String bound = "";
+		for(int i =0;i<16;i++) {
+			if(MemoryManager.memory[i].equals(pid)) {
+				bound = MemoryManager.memory[i+1];
+			}
+			
+			
+		}
+		return bound;
+	}
+	
+	public void WriteToMem(String data,String pid) {
+		
+		String bound = getBoundries(pid);
+		String[] fromTo = bound.split(",");
+		int from = Integer.parseInt(fromTo[0]);
+		int to = Integer.parseInt(fromTo[1]);
+		
+		for(int i = from; i<to;i++) {
+			
+			if(MemoryManager.memory[i].contains("var")) {
+				String[] check = MemoryManager.memory[i].split(":");
+				if(check[1].equals("null")) {
+					MemoryManager.memory[i] = "var:" + data;
+				}
+			}
+			
+		}
+	
+		
+		
+	}
 	
 	public static void main(String[] args) throws Exception {
 		String name = "proc2";
