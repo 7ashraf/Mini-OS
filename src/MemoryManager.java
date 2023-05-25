@@ -16,7 +16,7 @@ import java.util.Hashtable;
  * ins:<instruction>
  * var:<name>:<data>
  */
-//TODO not enough space for process
+//TODO , empty space + finished process
 public class MemoryManager {
     public static String[] memory = new String[40];
     static final int KERNEL_END = 15;
@@ -54,7 +54,7 @@ public class MemoryManager {
 		}
     }
     
-    public void insertProcess(Process process) {
+    public void insertProcess(Process process) throws Exception {
     	int processSize = calculateNeededSpace(process);
     	//first case: check user memory space
     	for(int i=USER_START; i<USER_END-processSize + 1; i++) {
@@ -77,9 +77,65 @@ public class MemoryManager {
     		}
     	}
     	//case2: check for finished process then check again for available space
+    	if(foundFinished()) {
+    		int [] bounds = getBounds(process.id+"");
+    		//best case
+    		if(calculateNeededSpace(process) <= calculateCurrentSpace(process)) {
+    			//overwrite
+    			int start = bounds[0];
+    			int c=start;
+				for(String ins: process.instructions) {
+					
+					memory[c++]= new String("ins:"+ins);
+				}
+				memory[c] = new String("var:");
+				memory[c+1] = new String("var:");
+				memory[c+2] = new String("var:");
+				//nullify rest of finished process words
+				if(c<bounds[1]) {
+					for(int i =c; i<bounds[1]; i++) {
+						memory[i] = null;
+					}
+				}
+				return;
+    			
+    		}else {
+    			//write into disk
+    			SystemCall.WriteToDisk(process.id+"", process.toString());
+    			return;
+    		}
+    		
+    	}
     	
     	
     	
+    	
+    }
+    public int[] getBounds(String pid) {
+    	
+    	String boundString = "";
+    	int[] bounds = new int[1];
+		for(int i =0;i<16;i++) {
+			if(MemoryManager.memory[i].equals(pid)) {
+				boundString = MemoryManager.memory[i+1];
+			}
+		}
+		String[] fromTo = boundString.split(",");
+		bounds[0] = Integer.parseInt(fromTo[0]);
+		bounds[1] = Integer.parseInt(fromTo[1]);
+		return bounds;
+    }
+    
+    public boolean foundFinished() {
+    	for(int i =0; i<KERNEL_END; i = i+4) {
+    		if(memory[i+3].equals(ProcessState.FINISHED.toString())) {
+    			//found finished process
+    			return true;
+    		}
+    		
+    		
+    	}
+    	return false;
     }
     
     public int calculateNeededSpace(Process process) {
@@ -88,4 +144,11 @@ public class MemoryManager {
     	
     }
     
+    public int calculateCurrentSpace(Process process) {
+    	int[] bounds = getBounds(process.id+"");
+    	return bounds[1]-bounds[0];
+    	
+    }
+    
 }
+

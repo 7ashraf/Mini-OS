@@ -25,7 +25,16 @@ public class Process {
 	    
 	    
 	    public String toString() {
-	    	return "Process Id: " + this.id + " Process Name: " + this.name;	
+	    	String process ="";
+	    	for(String ins: instructions) {
+	    		process+= "ins:"+ins;
+	    	}
+	    	process+="var:null";
+	    	process+="var:null";
+	    	process+="var:null";
+	    	
+	    	return process;
+
 	    }
 	    
 	    public void requestSystemCall(SystemCallTypes type) {
