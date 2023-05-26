@@ -81,6 +81,7 @@ public class SystemCall {
 		for(int i =0;i<16;i++) {
 			if(MemoryManager.memory[i].equals(pid)) {
 				bound = MemoryManager.memory[i+1];
+				break;
 			}
 			
 			
@@ -88,20 +89,21 @@ public class SystemCall {
 		return bound;
 	}
 	
-	public static void WriteToMem(String data,String pid) {
+	public static void WriteToMem(String var, String val, String pid) {
 		
-		String bound = getBoundries(pid);
-		String[] fromTo = bound.split(",");
-		int from = Integer.parseInt(fromTo[0]);
-		int to = Integer.parseInt(fromTo[1]);
+		int[] bounds = MemoryManager.getProcessBounds(pid);
 		
-		for(int i = from; i<to;i++) {
+		for(int i = bounds[0]; i<bounds[1];i++) {
+			//get memory line
+			String[] memoryLine = MemoryManager.memory[i].split(":");
 			
-			if(MemoryManager.memory[i].contains("var")) {
-				String[] check = MemoryManager.memory[i].split(":");
-				if(check[1].equals("null")) {
-					MemoryManager.memory[i] = "var:" + data;
-				}
+			//check if it is a variable 
+			if(memoryLine[0].equals("var")) {
+				
+					//overwrite variable
+					MemoryManager.memory[i] = "var:" + var + ":" + val;
+					return;
+				
 			}
 			
 		}

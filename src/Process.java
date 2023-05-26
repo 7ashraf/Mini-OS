@@ -50,7 +50,7 @@ public class Process {
 			   }
 		   }
 		   for(String ins: instructions) {
-			   parser.interpret(ins);
+			   parser.interpret(ins, id);
 		   }
 		   
 		   

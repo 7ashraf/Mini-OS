@@ -12,7 +12,7 @@ public class PCB {
 	 
 	 public PCB(String pid) {
 		 this.pid = pid;
-		 this.state = ProcessState.BLOCKED;
+		 this.state = ProcessState.READY;
 		 this.counter =0;
 		 this.bounds = new int[] {-1, -1};
 	 }

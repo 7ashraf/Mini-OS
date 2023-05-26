@@ -9,11 +9,15 @@ import java.util.LinkedList;
 
 
 //TODO system calls, scheduler algorithm
-//TODO deprecate process class
+//TODO deprecate process class: DONE
 //TODO queues
 //TODO mutex
 //TODO swap mem to disk
+//TODO handle PCB finished state aw momken mateb'ash mehtaga
+//TODO handle assign input other sources
+//TODO handle write to disk
 public class OS {
+	static int idCounter;
 	static Mutex fileMutex;
 	static Mutex inputMutex;
 	static Mutex outputMutex;
@@ -21,8 +25,9 @@ public class OS {
 	static List<PCB> pcbs;
 	static MemoryManager memoryManager;
 	static Scheduler scheduler;
-	static Queue<Process> readyQ;
-	static Queue<Process> blockedQ;
+	static Queue<String> readyQ;
+	static Queue<String> blockedQ;
+	static Hashtable<String, PCB> pcbById;
 
     
 	public static void main(String[] args) throws Exception {
@@ -31,15 +36,24 @@ public class OS {
 		outputMutex = new OutputMutex();
 		processes = new ArrayList<>();
 		pcbs = new ArrayList<>();
+		pcbById = new Hashtable<>();
 
 		memoryManager = MemoryManager.getInstance();
 		scheduler = Scheduler.getInstance();
-		
-		
-		readPrograms();
-		
 		readyQ = new LinkedList<>();
 		blockedQ = new LinkedList<>();
+		
+		/*
+		 * Arch:
+		 * os initialized
+		 * program lines read and inserted into memory
+		 * pcb initialized and inserted into memory
+		 */
+		readPrograms();
+		scheduler.sceduleAndExecute(readyQ);
+		
+		
+		
 		//scheduler schedules inside the queue and runs them according to the robin algo
 		
 	}
@@ -47,6 +61,7 @@ public class OS {
 	//archeticture to be corretcetd
 	//aka to be moved
 	public static void readPrograms() throws Exception {
+		
 		String path1 = new String ("Program_1.txt");
 		PCB p1 = new PCB("p1");
 		
@@ -58,8 +73,26 @@ public class OS {
 		PCB p3 = new PCB("p3");
 		
 		readProgram(path1);
+//		for(int i =0; i< 40; i++) {
+//			if(memoryManager.memory[i] != null)
+//			System.out.println(memoryManager.memory[i]);
+//		}
+//		System.out.println("/////////////");
+
 		readProgram(path2);
+//		for(int i =0; i< 40; i++) {
+//			if(memoryManager.memory[i] != null)
+//			System.out.println(memoryManager.memory[i]);
+//		}
+//		System.out.println("/////////////");
+
 		readProgram(path3);
+		for(int i =0; i< 40; i++) {
+			if(memoryManager.memory[i] != null)
+			System.out.println(memoryManager.memory[i]);
+		}
+		System.out.println("/////////////");
+
 		
 			
 	   }
@@ -79,16 +112,23 @@ public class OS {
 			instructions.add(sc.nextLine());
 		}
 		//write process to memory
-		PCB pcb = new PCB("p1");
+		PCB pcb = new PCB("p" + ++idCounter);
+
 		int[] bounds = MemoryManager.insertProcess(instructions, pcb);
+		instructions.clear();
 
 		
 		processes.add(pcb.pid);
+
 		pcbs.add(pcb);
+		pcbById.put(pcb.pid, pcb);
 		
 		//write pcb to memory
 		pcb.setBounds(bounds);
 		memoryManager.insertPCB(pcb);
+		
+		//insert into readyQ
+		readyQ.add(pcb.pid);
 
 		
 		

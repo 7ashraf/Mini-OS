@@ -28,7 +28,7 @@ public class Scheduler {
 	
 	
 
-    public  void sceduleAndExecute(Queue<String> processes) {
+    public  void sceduleAndExecute(Queue<String> processes) throws Exception {
         while (!processes.isEmpty()) {
         	//execute all process 2 times 
         	//loop untill queue is empty
@@ -60,18 +60,26 @@ public class Scheduler {
         }
     }
     
-    public static void executeInstruction(String pid) {
+    public static void executeInstruction(String pid) throws Exception {
 		   //check for program counter
 		   //run next instruction
 		   int pcbIndex = MemoryManager.getPCBIndex(pid);
 		   int pCounter = pcbIndex+2;
 		   int[] processBounds = MemoryManager.getProcessBounds(pid);
-		   String instruction = MemoryManager.memory[processBounds[0]+pCounter].split(":")[1];
+		   String instruction;
+		   if(processBounds[0]>49) {
+			   MemoryManager.swapDiskToProcess(OS.pcbById.get(pid));
+		   }
+		   
+		   instruction = MemoryManager.memory[processBounds[0]+pCounter].split(":")[1];
+		   
 		   if(!MemoryManager.memory[processBounds[0]+pCounter].split(":")[0].equals("ins")) {
 			   MemoryManager.memory[pcbIndex + 3] = ProcessState.FINISHED.toString();
 			   return;
+			   
 		   }
-		   Parser.interpret(instruction);
+		   
+		   Parser.interpret(instruction, pid);
 		   //increment pcounter
 		   MemoryManager.memory[pCounter] = ++pCounter+"";
 	   }

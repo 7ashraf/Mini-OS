@@ -1,16 +1,1 @@
-proc1
-gggsrg
-grdsgr
-gdggdrd
-gdgdgg
-$
-proc2
-aeae
-egsf
-gsrg
-sgrgs
-$
-filetst
-forTesting and stuff
-$
-
+var:

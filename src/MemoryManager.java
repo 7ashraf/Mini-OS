@@ -1,5 +1,10 @@
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.util.ArrayList;
 import java.util.Hashtable;
 import java.util.List;
+import java.util.Scanner;
 
 
 /*
@@ -17,6 +22,12 @@ import java.util.List;
  * ins:<instruction>
  * var:<name>:<data>
  */
+
+/*
+ * Disk structure
+ * sart index = 40
+ * 
+ */
 //TODO , empty space + finished process
 //unhandled elses
 public class MemoryManager {
@@ -26,6 +37,7 @@ public class MemoryManager {
     static final int USER_END = 39;
 
     static final int PCB_SIZE =4;
+    static final int DISK_START = 40;
     //0-> 15 kernel
     //16-39 user
     public static final MemoryManager memoryManager = new MemoryManager();
@@ -41,16 +53,20 @@ public class MemoryManager {
     
 			for(int i=0; i<KERNEL_END-4 +1 ; i++) {
 				for(int j =0; j<PCB_SIZE; j++) {
-					if(memory[i+j] != null || memory[i+j].equals(ProcessState.FINISHED.toString()))/*check if state finished*/{
-						if (j== PCB_SIZE -1) {
-							
-							memory[i] = new String(pcb.pid+"");
-							memory[i+1] = new String(pcb.bounds[0]+","+ pcb.bounds[1]);
-							memory[i+2] = new String(pcb.counter+"");
-							memory[i+3] = new String(pcb.state.toString());
-							return;
-							
-						}
+					/*
+	    			 * sliding window algorith chech for contiguos empty slots inside memory
+	    			 */
+					if(memory[i+j] != null)break;//increment i
+					
+					if (j== PCB_SIZE -1) {
+						
+						memory[i] = new String(pcb.pid+"");
+						memory[i+1] = new String(pcb.bounds[0]+","+ pcb.bounds[1]);
+						memory[i+2] = new String(pcb.counter+"");
+						memory[i+3] = new String(pcb.state.toString());
+						return;
+						
+						
 					}
 					
 				}
@@ -63,23 +79,28 @@ public class MemoryManager {
     	//first case: check user memory space
     	for(int i=USER_START; i<USER_END-processSize + 1; i++) {
     		for(int j =0; j<processSize; j++) {
+    			/*
+    			 * sliding window algorith chech for contiguos empty slots inside memory
+    			 */
+    			if(memory[i+j] != null)break;//increment i
+    			
     			if(j == processSize-1) {
-    				if(memory[i+j] != null || memory[i+j].equals(ProcessState.FINISHED.toString()))/*check if state finished*/{
-	    				//found empty space
-	    				//insert instructions
-	    				int c=i;
-	    				for(String ins: instructions) {
-	    					
-	    					memory[c++]= new String("ins:"+ins);
-	    				}
-	    				memory[c] = new String("var:");
-	    				memory[c++] = new String("var:");
-	    				memory[c++] = new String("var:");
-	    				//modify pcb boundaries after process insertions
-	    				
-	    				
-	    				return new int[] {i, c};
+    				
+    				//found empty space
+    				//insert instructions
+    				int c=i;
+    				for(String ins: instructions) {
+    					
+    					memory[c++]= new String("ins:"+ins);
     				}
+    				memory[c] = new String("var:");
+    				memory[c++] = new String("var:");
+    				memory[c++] = new String("var:");
+    				//modify pcb boundaries after process insertions
+    				
+    				
+    				return new int[] {i, c};
+    				
     			}
     		}
     	}
@@ -110,15 +131,17 @@ public class MemoryManager {
     			
     		
     		
-	    	}else {
-	    		//swapp
 	    	}
-    	} 
+    	} else {
+    		//swap memory to disk
+    		//get pcb and instructions to swap
+    		//wrong archeticture to be modified
+    		PCB pInMemory = OS.pcbs.get(0);
+    		List<String> insInMemory = getProcessInstructions(pInMemory.pid);
+    		return swapProcessToDisk(pInMemory, insInMemory, instructions, pcb);
+    	}
     	
 			//write into disk
-			String data = instructions.toString() + "var:null \n"+ "var:null \n"+ "var:null \n";
-			SystemCall.WriteToDisk(pcb.pid+"", instructions.toString());
-			//
 			return new int [] {-1, -1};
 		
     	
@@ -126,13 +149,143 @@ public class MemoryManager {
     	
     	
     }
+    
+    // no need to overwrite the pcb
+    public static int[] swapProcessToDisk(PCB pInMemory, List<String> insInMemory, List<String> insToMemory, PCB pToMemory)throws Exception {
+    	int[] inMemoryBounds = pInMemory.bounds;
+    	int inMemeoryPcbIndex = getPCBIndex(pInMemory.pid);
+    	int[] toMemoryBounds = new int[] {-1, -1};
+//    	//write the pcb to disk
+//    	for(int i =inMemeoryPcbIndex; i<PCB_SIZE; i++) {
+//    			//if write is not busy else add to queue
+//			FileWriter writer = new FileWriter("Disk.txt",true);
+//	        writer.write(memory[i] + "\n");
+//	        writer.close();
+//    	}
+    	//write instuctions on disk
+    	for(int i =inMemoryBounds[0]; i<inMemoryBounds[1]; i++) {
+			//if write is not busy else add to queue
+		FileWriter writer = new FileWriter("Disk.txt",false);
+        writer.write(memory[i] + "\n");
+        writer.close();
+    	}
+    	
+    	//overwrite instruction
+    	int start = inMemoryBounds[0];
+		int c=start;
+		for(String ins: insToMemory) {
+			
+			memory[c++]= new String("ins:"+ins);
+		}
+		memory[c++] = new String("var:");
+		memory[c++] = new String("var:");
+		memory[c++] = new String("var:");
+		//nullify rest of finished process words
+		if(c<inMemoryBounds[1]) {
+			for(int i =c; i<inMemoryBounds[1]; i++) {
+				memory[i] = null;
+			}
+		}
+		toMemoryBounds = new int[] {inMemoryBounds[0], c};
+		
+		//overwrite pcb
+//		memory[inMemeoryPcbIndex] = new String(pToMemory+"");
+//		memory[inMemeoryPcbIndex+1] = new String(toMemoryBounds[0]+","+ toMemoryBounds[1]);
+//		memory[inMemeoryPcbIndex+2] = new String(0+"");
+//		memory[inMemeoryPcbIndex+3] = new String(ProcessState.READY.toString());
+		
+		//modidy swapped pcb bounds
+		pInMemory.bounds[0] = DISK_START;
+		pInMemory.bounds[1] = DISK_START + (-USER_START + pInMemory.bounds[1]);
+		String boundsS = pInMemory.bounds[0] + "," + pInMemory.bounds[1];
+		memory[1] = boundsS;
+		return toMemoryBounds = new int[] {inMemoryBounds[0], c};
+
+
+    	
+    	
+    	
+    	
+    	
+    }
+    public static void swapDiskToProcess(PCB pInDisk)throws Exception {
+    	PCB pInMemory = OS.pcbs.get(0);
+    	int[] inMemoryBounds = pInMemory.bounds;
+    	int inMemeoryPcbIndex = getPCBIndex(pInMemory.pid);
+    	int[] toMemoryBounds = new int[] {-1, -1};
+
+    	
+		List<String> insInMemory = getProcessInstructions(pInMemory.pid);
+    	List<String> tmp = insInMemory;
+    	//overwrite instruction on memory
+    	List<String> insDisk = loadInstructionsFromDisk(inMemoryBounds);
+    	
+    	//write ins on memory from disk
+    	//need bounds
+    	for(int i =inMemoryBounds[0]; i<insDisk.size(); i++) {
+    		memory[i] = insDisk.get(i);
+    	}
+    	//modify pcb of process was on disk
+    	int inDiskPcbIndex = getPCBIndex(pInDisk.pid);
+    	String boundsS = inMemoryBounds[0] + "," + insDisk.size();
+    	pInDisk.bounds = new int[] {Integer.parseInt(boundsS.split(",")[0]), Integer.parseInt(boundsS.split(",")[1])};
+    	memory[inDiskPcbIndex+1] = boundsS;
+    	
+    	
+    	
+    	//write instuctions on disk from memory
+    	for(int i =0; i<tmp.size(); i++) {
+			//if write is not busy else add to queue
+		FileWriter writer = new FileWriter("Disk.txt",false);
+        writer.write(tmp.get(i) + "\n");
+        writer.close();
+    	}
+    	//modify pcb was in memory to new bounds on disk
+    	pInMemory.bounds[0] = DISK_START;
+		pInMemory.bounds[1] = DISK_START + (-USER_START + pInMemory.bounds[1]);
+		boundsS = pInMemory.bounds[0] + "," + pInMemory.bounds[1];
+		memory[inMemeoryPcbIndex+1] = boundsS;
+    	
+ 
+    	
+    	
+    	
+    	
+    }
+    private static List<String> loadInstructionsFromDisk(int[] bounds) {
+    	List<String> ins = new ArrayList<>();
+    	try {
+    	      File disk = new File("Disk.txt");
+    	      Scanner myReader = new Scanner(disk);
+    	      while (myReader.hasNextLine()) {
+    	        String data = myReader.nextLine();
+    	        ins.add(data);
+    	      }
+    	      myReader.close();
+    	    } catch (FileNotFoundException e) {
+    	      System.out.println("An error occurred.");
+    	      e.printStackTrace();
+    	    }
+		return ins;
+	}
+
+	public static List<String> getProcessInstructions(String pid){
+    	List<String> instructions = new ArrayList<>();
+    	int[] bounds = getProcessBounds(pid);
+    	
+    	for(int i =bounds[0]; i<bounds[1]; i++) {
+    		instructions.add(memory[i]);
+    	}
+    	return instructions;
+    }
     public static int[] getProcessBounds(String pid) {
 
     	String boundString = "";
-    	int[] bounds = new int[1];
-		for(int i =0;i<16;i++) {
+    	int[] bounds = new int[] {-1, -1};
+		for(int i =0;i<KERNEL_END;i++) {
 			if(MemoryManager.memory[i].equals(pid)) {
 				boundString = MemoryManager.memory[i+1];
+				break;
 			}
 		}
 		String[] fromTo = boundString.split(",");
@@ -143,7 +296,7 @@ public class MemoryManager {
     
     public static int[] foundFinished() {
     	for(int i =0; i<KERNEL_END; i = i+4) {
-    		if(memory[i+3].equals(ProcessState.FINISHED.toString())) {
+    		if(memory[i+3] != null&&memory[i+3].equals(ProcessState.FINISHED.toString())) {
     			//found finished process
     			//return its bounds
     			int[] bounds = new int[] {-1, -1};
@@ -162,7 +315,7 @@ public class MemoryManager {
     	public static boolean isFinished(String pid) {
         	for(int i =0; i<KERNEL_END; i = i+4) {
         		
-        		if(memory[i].equals(pid)) {
+        		if(memory[i] != null && memory[i].equals(pid)) {
 		    		if(memory[i+3].equals(ProcessState.FINISHED.toString())) {
 		    			//found finished process
 		    			return true;
@@ -185,12 +338,13 @@ public class MemoryManager {
     }
     public static int getPCBIndex(String pid) {
     	for(int i =0; i<KERNEL_END; i++) {
-    		if(memory[i].equals(pid)) {
+	    		if(memory[i].equals(pid)) {
     			return i;
     		}
     	}
     	return -1;
     }
+    
     
 }
 

@@ -62,13 +62,13 @@ public class Parser {
 //	    }
 
 
-	    public static void interpret(String statement) {
+	    public static void interpret(String statement, String pid) {
 	        String[] tokens = statement.split(" ");
 
 	        if (tokens[0].equals("print")) {
 	            print(tokens[1]);
 	        } else if (tokens[0].equals("assign")) {
-	            assign(tokens[1], tokens[2]);
+	            assign(tokens[1], tokens[2],pid);
 	        } else if (tokens[0].equals("writeFile")) {
 	            writeFile(tokens[1], tokens[2]);
 	        } else if (tokens[0].equals("readFile")) {
@@ -89,14 +89,14 @@ public class Parser {
 		public static void print(String value) {
 	        System.out.println(value);
 	    }
-
-	    public static void assign(String variable, String value) {
-	        if (value.equals("input")) {
+		//to be changed to assign input
+	    public static void assign(String var,/* String val,*/ String source, String pid) {
+	        if (source.equals("input")) {
 	            System.out.println("Please enter a value:");
 	            Scanner scanner = new Scanner(System.in);
-	            String inputValue = scanner.nextLine();
+	            String val = scanner.nextLine();
 	            //system call to rewrite to memory
-	            SystemCall.WriteToMem(variable, value);
+	            SystemCall.WriteToMem(var, val, pid);
 	        } else {
 	          //  variables.put(variable, value);
 	        }
