@@ -69,13 +69,14 @@ public class SystemCall {
 	public String ReadFromMem(int startBoundry,int endBoundry) {
 		String ret = "";
 		for(int i =startBoundry;i<endBoundry;i++) {
-			ret += MemoryManager.memory[i];
+			//if instruction
+			ret += MemoryManager.memory[i].split(":");
 		}
 		
 		return ret;
 	}
 	
-	public String getBoundries(String pid) {
+	public static String getBoundries(String pid) {
 		String bound = "";
 		for(int i =0;i<16;i++) {
 			if(MemoryManager.memory[i].equals(pid)) {
@@ -87,7 +88,7 @@ public class SystemCall {
 		return bound;
 	}
 	
-	public void WriteToMem(String data,String pid) {
+	public static void WriteToMem(String data,String pid) {
 		
 		String bound = getBoundries(pid);
 		String[] fromTo = bound.split(",");

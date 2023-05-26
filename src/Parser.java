@@ -95,7 +95,8 @@ public class Parser {
 	            System.out.println("Please enter a value:");
 	            Scanner scanner = new Scanner(System.in);
 	            String inputValue = scanner.nextLine();
-	          //  variables.put(variable, inputValue);
+	            //system call to rewrite to memory
+	            SystemCall.WriteToMem(variable, value);
 	        } else {
 	          //  variables.put(variable, value);
 	        }

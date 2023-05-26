@@ -1,4 +1,5 @@
 import java.util.Hashtable;
+import java.util.List;
 
 
 /*
@@ -17,6 +18,7 @@ import java.util.Hashtable;
  * var:<name>:<data>
  */
 //TODO , empty space + finished process
+//unhandled elses
 public class MemoryManager {
     public static String[] memory = new String[40];
     static final int KERNEL_END = 15;
@@ -26,12 +28,13 @@ public class MemoryManager {
     static final int PCB_SIZE =4;
     //0-> 15 kernel
     //16-39 user
+    public static final MemoryManager memoryManager = new MemoryManager();
     private MemoryManager() {
     	
     }
     
-    public MemoryManager getMemoryMangerInstance() {
-    	return this;
+    public static MemoryManager getInstance() {
+    	return memoryManager;
     }
     
     public void insertPCB(PCB pcb) {
@@ -41,8 +44,8 @@ public class MemoryManager {
 					if(memory[i+j] != null || memory[i+j].equals(ProcessState.FINISHED.toString()))/*check if state finished*/{
 						if (j== PCB_SIZE -1) {
 							
-							memory[i] = new String(pcb.id+"");
-							memory[i+1] = new String(pcb.memoryBoundaries[0]+","+ pcb.memoryBoundaries[1]);
+							memory[i] = new String(pcb.pid+"");
+							memory[i+1] = new String(pcb.bounds[0]+","+ pcb.bounds[1]);
 							memory[i+2] = new String(pcb.counter+"");
 							memory[i+3] = new String(pcb.state.toString());
 							return;
@@ -54,8 +57,9 @@ public class MemoryManager {
 		}
     }
     
-    public void insertProcess(Process process) throws Exception {
-    	int processSize = calculateNeededSpace(process);
+    public static int[] insertProcess(List<String> instructions, PCB pcb) throws Exception {
+    	//should set bounds for pcb
+    	int processSize = calculateNeededSpace(instructions);
     	//first case: check user memory space
     	for(int i=USER_START; i<USER_END-processSize + 1; i++) {
     		for(int j =0; j<processSize; j++) {
@@ -64,27 +68,31 @@ public class MemoryManager {
 	    				//found empty space
 	    				//insert instructions
 	    				int c=i;
-	    				for(String ins: process.instructions) {
+	    				for(String ins: instructions) {
 	    					
 	    					memory[c++]= new String("ins:"+ins);
 	    				}
 	    				memory[c] = new String("var:");
-	    				memory[c+1] = new String("var:");
-	    				memory[c+2] = new String("var:");
-	    				return;
+	    				memory[c++] = new String("var:");
+	    				memory[c++] = new String("var:");
+	    				//modify pcb boundaries after process insertions
+	    				
+	    				
+	    				return new int[] {i, c};
     				}
     			}
     		}
     	}
     	//case2: check for finished process then check again for available space
-    	if(foundFinished()) {
-    		int [] bounds = getBounds(process.id+"");
+    	if(foundFinished()[0] != -1 ) {
+    		//get bounds of finished process
+    		int [] finishedBounds = foundFinished();
     		//best case
-    		if(calculateNeededSpace(process) <= calculateCurrentSpace(process)) {
+    		if(calculateNeededSpace(instructions) <= calculateCurrentSpace(pcb.pid)) {
     			//overwrite
-    			int start = bounds[0];
+    			int start = finishedBounds[0];
     			int c=start;
-				for(String ins: process.instructions) {
+				for(String ins: instructions) {
 					
 					memory[c++]= new String("ins:"+ins);
 				}
@@ -92,26 +100,33 @@ public class MemoryManager {
 				memory[c+1] = new String("var:");
 				memory[c+2] = new String("var:");
 				//nullify rest of finished process words
-				if(c<bounds[1]) {
-					for(int i =c; i<bounds[1]; i++) {
+				if(c<finishedBounds[1]) {
+					for(int i =c; i<finishedBounds[1]; i++) {
 						memory[i] = null;
 					}
 				}
-				return;
+				
+				return new int[] {finishedBounds[0], c};
     			
-    		}else {
-    			//write into disk
-    			SystemCall.WriteToDisk(process.id+"", process.toString());
-    			return;
-    		}
     		
-    	}
+    		
+	    	}else {
+	    		//swapp
+	    	}
+    	} 
+    	
+			//write into disk
+			String data = instructions.toString() + "var:null \n"+ "var:null \n"+ "var:null \n";
+			SystemCall.WriteToDisk(pcb.pid+"", instructions.toString());
+			//
+			return new int [] {-1, -1};
+		
     	
     	
     	
     	
     }
-    public int[] getBounds(String pid) {
+    public static int[] getProcessBounds(String pid) {
 
     	String boundString = "";
     	int[] bounds = new int[1];
@@ -126,28 +141,55 @@ public class MemoryManager {
 		return bounds;
     }
     
-    public boolean foundFinished() {
+    public static int[] foundFinished() {
     	for(int i =0; i<KERNEL_END; i = i+4) {
     		if(memory[i+3].equals(ProcessState.FINISHED.toString())) {
     			//found finished process
-    			return true;
+    			//return its bounds
+    			int[] bounds = new int[] {-1, -1};
+    			String[] fromTo = memory[1].split(",");
+    			bounds[0] = Integer.parseInt(fromTo[0]);
+    			bounds[1] = Integer.parseInt(fromTo[1]);
+    			
+    			
+    			return bounds;
     		}
     		
     		
     	}
+    	return new int[] {-1, -1};
+    }
+    	public static boolean isFinished(String pid) {
+        	for(int i =0; i<KERNEL_END; i = i+4) {
+        		
+        		if(memory[i].equals(pid)) {
+		    		if(memory[i+3].equals(ProcessState.FINISHED.toString())) {
+		    			//found finished process
+		    			return true;
+		    		}
+        		}
+        	}
     	return false;
     }
     
-    public int calculateNeededSpace(Process process) {
+    public static int calculateNeededSpace(List<String> instructions) {
     	
-    	return process.instructions.size() + 3;
+    	return instructions.size() + 3;
     	
     }
     
-    public int calculateCurrentSpace(Process process) {
-    	int[] bounds = getBounds(process.id+"");
+    public static int calculateCurrentSpace(String pid) {
+    	int[] bounds = getProcessBounds(pid);
     	return bounds[1]-bounds[0];
     	
+    }
+    public static int getPCBIndex(String pid) {
+    	for(int i =0; i<KERNEL_END; i++) {
+    		if(memory[i].equals(pid)) {
+    			return i;
+    		}
+    	}
+    	return -1;
     }
     
 }
